@@ -1,36 +1,20 @@
 import sharp from 'sharp'
-
-export default eventHandler(async (event) => {
+import { validateMediaKey } from '../../services/storage/keys'
+export default defineEventHandler(async (event) => {
   const { storageProvider } = useStorageProvider(event)
-
-  let url = getRouterParam(event, 'thumbnailUrl')
-
-  if (!url) {
+  const url = getRouterParam(event, 'thumbnailUrl', { decode: true }) || ''
+  if (!url.startsWith('/media/'))
     throw createError({
       statusCode: 400,
-      statusMessage: 'Invalid thumbnailUrl',
+      statusMessage: 'Invalid thumbnail URL',
     })
-  }
-
-  url = decodeURIComponent(url)
-
-  if (
-    storageProvider.config?.provider === 'local' &&
-    url.startsWith('/storage/')
-  ) {
-    const scheme = event.node.req.headers['x-forwarded-proto'] || 'http'
-    url = `${scheme}://${event.node.req.headers.host}${url}`
-  }
-
-  const photo = await fetch(url)
-    .then((res) => {
-      if (!res.ok) {
-        throw createError({ statusCode: 404, statusMessage: 'Photo not found' })
-      }
-      return res.arrayBuffer()
-    })
-    .then((buf) => Buffer.from(buf))
-
-  const sharpInst = sharp(photo).rotate()
-  return await sharpInst.jpeg({ quality: 85 }).toBuffer()
+  const key = decodeURIComponent(url.slice('/media/'.length))
+  if (!validateMediaKey(key, storageProvider.config?.prefix || ''))
+    throw createError({ statusCode: 400, statusMessage: 'Invalid media key' })
+  const buffer = await storageProvider.get(key)
+  if (!buffer)
+    throw createError({ statusCode: 404, statusMessage: 'Thumbnail not found' })
+  setHeader(event, 'Cache-Control', 'private, no-store')
+  setHeader(event, 'Content-Type', 'image/jpeg')
+  return sharp(buffer).rotate().jpeg({ quality: 85 }).toBuffer()
 })

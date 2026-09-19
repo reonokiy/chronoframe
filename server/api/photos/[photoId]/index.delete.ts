@@ -12,11 +12,12 @@ export default eventHandler(async (event) => {
     })
   }
 
-  const photo = await useDB()
-    .select()
-    .from(tables.photos)
-    .where(eq(tables.photos.id, photoId))
-    .get()
+  const photo = (
+    await useDB()
+      .select()
+      .from(tables.photos)
+      .where(eq(tables.photos.id, photoId))
+  )[0]
 
   if (!photo) {
     return createError({
@@ -64,7 +65,7 @@ export default eventHandler(async (event) => {
     }
   }
 
-  useDB().delete(tables.photos).where(eq(tables.photos.id, photoId)).run()
+  await useDB().delete(tables.photos).where(eq(tables.photos.id, photoId))
 
   logger.image.success(`Photo ${photoId} deleted`)
 

@@ -1,3 +1,4 @@
+import { validateMediaKey } from '../../services/storage/keys'
 import { useStorageProvider } from '~~/server/utils/useStorageProvider'
 import { logger } from '~~/server/utils/logger'
 import { settingsManager } from '~~/server/services/settings/settingsManager'
@@ -9,7 +10,7 @@ export default eventHandler(async (event) => {
   const key = getQuery(event).key as string | undefined
   const t = await useTranslation(event)
 
-  if (!key) {
+  if (!key || !validateMediaKey(key, storageProvider.config?.prefix || '')) {
     throw createError({
       statusCode: 400,
       statusMessage: t('upload.error.required.title'),

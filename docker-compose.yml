@@ -1,26 +1,18 @@
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
-    container_name: chronoframe
+    build: .
     restart: unless-stopped
     ports:
-      - '3000:3000'
-    volumes:
-      - ./data:/app/data
-    env_file:
-      - .env
-
-  # database:
-  #   image: postgres:15-alpine
-  #   container_name: chronoframe_db
-  #   environment:
-  #     POSTGRES_DB: chronoframe
-  #     POSTGRES_USER: chronoframe
-  #     POSTGRES_PASSWORD: your-password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-
-# volumes:
-#   postgres_data:
+      - '127.0.0.1:3000:3000'
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      NUXT_STORAGE_DRIVER: s3
+    read_only: true
+    tmpfs:
+      - /tmp:uid=65532,gid=65532,mode=1777
+      - /app/data:uid=65532,gid=65532,mode=0700
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 120s

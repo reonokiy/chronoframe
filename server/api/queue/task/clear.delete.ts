@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
       const thresholdTimestamp = Math.floor(
         (Date.now() - daysThreshold * 24 * 60 * 60 * 1000) / 1000,
       )
-      const timeCondition = sql`${tables.pipelineQueue.createdAt} < ${thresholdTimestamp}`
+      const timeCondition = sql`${tables.pipelineQueue.createdAt} < ${new Date(thresholdTimestamp * 1000).toISOString()}::timestamptz`
 
       whereCondition = sql`(${whereCondition}) AND ${timeCondition}`
     }

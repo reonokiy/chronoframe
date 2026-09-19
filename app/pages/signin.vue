@@ -1,73 +1,16 @@
-<script lang="ts" setup>
-useHead({
-  title: () => $t('auth.form.signin.title'),
-})
-
-const { fetch: fetchUserSession } = useUserSession()
+<script setup lang="ts">
 const config = useRuntimeConfig()
-const settingsStore = useSettingsStore()
-const toast = useToast()
-const route = useRoute()
-const router = useRouter()
-
-const isLoading = ref(false)
-
-const githubOauthEnabled = computed(() => {
-  const settingsValue = settingsStore.getSetting('system:auth.github.enabled')
-  if (typeof settingsValue === 'boolean') {
-    return settingsValue
-  }
-
-  return Boolean(config.public.oauth.github.enabled)
-})
-
-const onAuthSubmit = async (event: any) => {
-  isLoading.value = true
-  await $fetch('/api/login', {
-    method: 'POST',
-    body: event.data,
-  })
-    .then(async () => {
-      await fetchUserSession()
-      router.push(route.query.redirect?.toString() || '/')
-    })
-    .catch((error) => {
-      console.error('Login error:', error)
-      toast.add({
-        color: 'error',
-        title: $t('auth.messages.loginFailed.title'),
-        description: error?.data?.message || $t('auth.messages.loginFailed.description'),
-      })
-    })
-    .finally(() => {
-      isLoading.value = false
-    })
-}
+useHead({ title: 'Sign in' })
 </script>
-
 <template>
-  <div
-    class="w-full min-h-svh flex flex-col items-center justify-center p-4 pb-12"
-  >
-    <AuthForm
-      :title="$t('auth.form.signin.title')"
-      :subtitle="$t('auth.form.signin.subtitle', [config.public.app.title])"
-      :loading="isLoading"
-      :providers="[
-        githubOauthEnabled && {
-          icon: 'tabler:brand-github',
-          size: 'lg',
-          color: 'neutral',
-          variant: 'subtle',
-          block: true,
-          label: 'GitHub',
-          to: '/api/auth/github',
-          external: true,
-        },
-      ]"
-      @submit="onAuthSubmit"
-    />
+  <div class="min-h-svh flex flex-col items-center justify-center gap-6 p-6">
+    <h1 class="text-2xl font-semibold">{{ config.public.app.title }}</h1>
+    <UButton
+      to="/api/auth/oidc"
+      external
+      size="xl"
+      icon="tabler:login"
+      >{{ config.public.oidcLabel }}</UButton
+    >
   </div>
 </template>
-
-<style scoped></style>

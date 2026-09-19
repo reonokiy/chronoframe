@@ -4,7 +4,7 @@ import {
 } from '~~/server/services/video/scanner'
 import { eq } from 'drizzle-orm'
 import { findLivePhotoVideoForImage } from '~~/server/services/video/livephoto'
-import { getStorageManager } from '~~/server/plugins/3.storage'
+import { getStorageManager } from '~~/server/services/storage'
 import { batchTestLivePhotoDetection } from '~~/server/services/video/test-utils'
 
 export default eventHandler(async (event) => {
@@ -75,7 +75,7 @@ export default eventHandler(async (event) => {
           .where(eq(tables.photos.id, photoId))
           .limit(1)
 
-        if (photos.length === 0) {
+        if (!photos[0]) {
           throw createError({
             statusCode: 404,
             statusMessage: 'Photo not found',
@@ -94,7 +94,7 @@ export default eventHandler(async (event) => {
             .update(tables.photos)
             .set({
               isLivePhoto: 1,
-              livePhotoVideoUrl: storageProvider.getPublicUrl(
+              livePhotoVideoUrl: storageProvider.getMediaUrl(
                 livePhotoVideo.videoKey,
               ),
               livePhotoVideoKey: livePhotoVideo.videoKey,

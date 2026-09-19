@@ -1,10 +1,7 @@
+import type { Logger } from '../../../utils/logger'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type {
-  LocalStorageConfig,
-  StorageObject,
-  StorageProvider,
-} from '../interfaces'
+import type { LocalStorageConfig, StorageObject, StorageProvider } from '..'
 
 const ensureDir = async (dirPath: string) => {
   await fs.mkdir(dirPath, { recursive: true })
@@ -33,7 +30,10 @@ export class LocalStorageProvider implements StorageProvider {
 
   private resolveAbsoluteKey(key: string): { absFile: string; relKey: string } {
     const relKey = sanitizeKey(combinePrefixAndKey(this.config.prefix, key))
-    const absFile = path.resolve(this.config.basePath, relKey)
+    const base = path.resolve(this.config.basePath)
+    const absFile = path.resolve(base, relKey)
+    if (!absFile.startsWith(base + path.sep))
+      throw new Error('Invalid storage key')
     return { absFile, relKey }
   }
 
@@ -74,10 +74,10 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
-  getPublicUrl(key: string): string {
+  getMediaUrl(key: string): string {
     const relKey = sanitizeKey(combinePrefixAndKey(this.config.prefix, key))
-    const base = (this.config.baseUrl || '/storage').replace(/\/+$/, '')
-    return `${base}/${relKey}`
+    const base = '/media'
+    return `${base}/${relKey.split('/').map(encodeURIComponent).join('/')}`
   }
 
   async listAll(): Promise<StorageObject[]> {
@@ -121,16 +121,6 @@ export class LocalStorageProvider implements StorageProvider {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
     }
 
-    // Fallback: try without adding prefix (in case key already contains it or was stored raw)
-    const rawRel = sanitizeKey(key)
-    const rawAbs = path.resolve(this.config.basePath, rawRel)
-    try {
-      const stat = await fs.stat(rawAbs)
-      if (!stat.isFile()) return null
-      return { key: rawRel, size: stat.size, lastModified: stat.mtime }
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
-      throw err
-    }
+    return null
   }
 }

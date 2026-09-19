@@ -12,7 +12,6 @@ export default eventHandler(async (event) => {
       .from(photos)
       .orderBy(photos.lastModified)
       .limit(10)
-      .all()
 
     return {
       recentPhotos,

@@ -32,15 +32,6 @@ type SystemSectionWithFields = SystemSection & {
 
 const SYSTEM_SECTION_ORDER: SystemSection[] = [
   {
-    id: 'thirdPartyLogin',
-    titleKey: 'settings.system.sections.thirdPartyLogin',
-    keys: [
-      'auth.github.enabled',
-      'auth.github.clientId',
-      'auth.github.clientSecret',
-    ],
-  },
-  {
     id: 'fileProcessing',
     titleKey: 'settings.system.sections.fileProcessing',
     keys: [

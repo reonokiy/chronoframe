@@ -65,11 +65,9 @@ export default eventHandler(async (event) => {
   }
 
   const db = useDB()
-  const photo = await db
-    .select()
-    .from(tables.photos)
-    .where(eq(tables.photos.id, photoId))
-    .get()
+  const photo = (
+    await db.select().from(tables.photos).where(eq(tables.photos.id, photoId))
+  )[0]
 
   if (!photo) {
     throw createError({
@@ -222,11 +220,9 @@ export default eventHandler(async (event) => {
       .set(updateData)
       .where(eq(tables.photos.id, photoId))
 
-    const updatedPhoto = await db
-      .select()
-      .from(tables.photos)
-      .where(eq(tables.photos.id, photoId))
-      .get()
+    const updatedPhoto = (
+      await db.select().from(tables.photos).where(eq(tables.photos.id, photoId))
+    )[0]
 
     if (pendingReverseGeocode) {
       const workerPool = globalThis.__workerPool

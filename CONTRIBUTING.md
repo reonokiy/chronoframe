@@ -6,7 +6,7 @@
 
 ### Required Software
 
-- **Node.js**: 20.0+
+- **Node.js**: 24.21+ (24.x)
 - **pnpm**: 9.0+ (preferred package manager)
 - **Git**: Latest version
 - **Docker**: Optional, for containerized development

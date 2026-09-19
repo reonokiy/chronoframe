@@ -17,27 +17,28 @@ export default eventHandler(async (event) => {
 
   const db = useDB()
 
-  const album = db.transaction((tx) => {
+  const album = await db.transaction(async (tx) => {
     // Place new album first (min position minus one gap), preserving the
     // default "newest first" order
-    const minRow = tx
-      .select({ min: min(tables.albums.position) })
-      .from(tables.albums)
-      .get()
+    const minRow = (
+      await tx.select({ min: min(tables.albums.position) }).from(tables.albums)
+    )[0]
     const position = (minRow?.min ?? 1000) - 1000
 
-    const newAlbum = tx
-      .insert(tables.albums)
-      .values({
-        title: body.title,
-        description: body.description || null,
-        coverPhotoId: body.coverPhotoId || null,
-        isHidden: body.isHidden || false,
-        position,
-      })
-      .returning()
-      .get()
+    const newAlbum = (
+      await tx
+        .insert(tables.albums)
+        .values({
+          title: body.title,
+          description: body.description || null,
+          coverPhotoId: body.coverPhotoId || null,
+          isHidden: body.isHidden || false,
+          position,
+        })
+        .returning()
+    )[0]
 
+    if (!newAlbum) throw new Error('Album insert failed')
     const albumId = newAlbum.id
     const photoIds = new Set(body.photoIds || [])
 
@@ -48,14 +49,14 @@ export default eventHandler(async (event) => {
     if (photoIds.size > 0) {
       let pos = 1000000
       for (const photoId of photoIds) {
-        tx.insert(tables.albumPhotos)
+        await tx
+          .insert(tables.albumPhotos)
           .values({
             albumId,
             photoId,
             position: (pos += 10),
           })
           .onConflictDoNothing()
-          .run()
       }
     }
 

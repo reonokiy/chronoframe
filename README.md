@@ -1,3 +1,5 @@
+> **Personal deployment fork:** PostgreSQL only, private S3 in production, local files in development, and OIDC-only sign-in. Start with [DEPLOYMENT.md](DEPLOYMENT.md). Upstream deployment and authentication instructions below describe the original project and do not apply to this fork.
+
 # ChronoFrame
 
 <p align="center">
@@ -173,7 +175,7 @@ docker compose up -d
 
 ### Requirements
 
-- Node.js 18+
+- Node.js 24.21+ (24.x)
 - pnpm 9.0+
 
 ### Install dependencies

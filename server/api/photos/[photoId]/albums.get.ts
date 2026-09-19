@@ -27,7 +27,6 @@ export default eventHandler(async (event) => {
       eq(tables.albums.id, tables.albumPhotos.albumId),
     )
     .where(eq(tables.albumPhotos.photoId, photoId))
-    .all()
 
   return albums
 })

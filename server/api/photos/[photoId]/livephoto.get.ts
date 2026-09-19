@@ -22,7 +22,7 @@ export default eventHandler(async (event) => {
       .where(eq(tables.photos.id, photoId))
       .limit(1)
 
-    if (photos.length === 0) {
+    if (!photos[0]) {
       throw createError({
         statusCode: 404,
         statusMessage: 'Photo not found',

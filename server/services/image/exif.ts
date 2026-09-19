@@ -477,7 +477,7 @@ export const extractPhotoInfo = (
     }
   } else {
     const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/)
-    if (dateMatch) {
+    if (dateMatch?.[1]) {
       dateTaken = new Date(dateMatch[1]).toISOString()
     }
   }

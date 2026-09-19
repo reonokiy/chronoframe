@@ -14,11 +14,9 @@ export default eventHandler(async (event) => {
 
   const db = useDB()
 
-  const album = db
-    .select()
-    .from(tables.albums)
-    .where(eq(tables.albums.id, albumId))
-    .get()
+  const album = (
+    await db.select().from(tables.albums).where(eq(tables.albums.id, albumId))
+  )[0]
 
   if (!album) {
     throw createError({
@@ -51,7 +49,6 @@ export default eventHandler(async (event) => {
     )
     .where(eq(tables.albumPhotos.albumId, albumId))
     .orderBy(asc(tables.albumPhotos.position))
-    .all()
 
   // 验证相册数据完整性
   if (!photos || !Array.isArray(photos)) {

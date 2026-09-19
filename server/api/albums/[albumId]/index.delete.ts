@@ -16,11 +16,9 @@ export default eventHandler(async (event) => {
   const db = useDB()
 
   // 检查相簌是否存在
-  const album = await db
-    .select()
-    .from(tables.albums)
-    .where(eq(tables.albums.id, albumId))
-    .get()
+  const album = (
+    await db.select().from(tables.albums).where(eq(tables.albums.id, albumId))
+  )[0]
 
   if (!album) {
     throw createError({
@@ -30,14 +28,14 @@ export default eventHandler(async (event) => {
   }
 
   // 使用事务删除相簌及其关联的照片关系
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     // 删除相簌-照片关系
-    tx.delete(tables.albumPhotos)
+    await tx
+      .delete(tables.albumPhotos)
       .where(eq(tables.albumPhotos.albumId, albumId))
-      .run()
 
     // 删除相簌
-    tx.delete(tables.albums).where(eq(tables.albums.id, albumId)).run()
+    await tx.delete(tables.albums).where(eq(tables.albums.id, albumId))
   })
 
   return { success: true }

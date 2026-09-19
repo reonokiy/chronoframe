@@ -23,7 +23,7 @@ import {
 import { settingsManager } from '../settings/settingsManager'
 import { findLivePhotoVideoForImage } from '../video/livephoto'
 import { processMotionPhotoFromXmp } from '../video/motion-photo'
-import { getStorageManager } from '~~/server/plugins/3.storage'
+import { getStorageManager } from '~~/server/services/storage'
 
 const EXIF_LOCATION_KEYS = [
   'GPSAltitude',
@@ -121,14 +121,16 @@ export class QueueManager {
     options?: Partial<NewPipelineQueueItem>,
   ): Promise<number> {
     const db = useDB()
-    const result = db
-      .insert(tables.pipelineQueue)
-      .values({
-        payload,
-        ...options,
-      })
-      .returning({ id: tables.pipelineQueue.id })
-      .get()
+    const result = (
+      await db
+        .insert(tables.pipelineQueue)
+        .values({
+          payload,
+          ...options,
+        })
+        .returning({ id: tables.pipelineQueue.id })
+    )[0]
+    if (!result) throw new Error('Queue insert failed')
     return result.id
   }
 
@@ -139,11 +141,12 @@ export class QueueManager {
    */
   async getTaskStatus(taskId: number) {
     const db = useDB()
-    const task = await db
-      .select()
-      .from(tables.pipelineQueue)
-      .where(eq(tables.pipelineQueue.id, taskId))
-      .get()
+    const task = (
+      await db
+        .select()
+        .from(tables.pipelineQueue)
+        .where(eq(tables.pipelineQueue.id, taskId))
+    )[0]
     return task
   }
 
@@ -154,27 +157,29 @@ export class QueueManager {
   async getNextTask(): Promise<PipelineQueueItem | null> {
     const db = useDB()
 
-    // 使用同步事务防止竞态条件
-    const task = db.transaction((tx) => {
-      const highestPriorityPendingTask = tx
-        .select()
-        .from(tables.pipelineQueue)
-        .where(eq(tables.pipelineQueue.status, 'pending'))
-        // 优先处理高优先级和较早创建的任务
-        .orderBy(
-          desc(tables.pipelineQueue.priority),
-          asc(tables.pipelineQueue.createdAt),
-        )
-        .limit(1)
-        .get()
+    // Row locks prevent concurrent workers from claiming the same pending task.
+    const task = await db.transaction(async (tx) => {
+      const highestPriorityPendingTask = (
+        await tx
+          .select()
+          .from(tables.pipelineQueue)
+          .where(eq(tables.pipelineQueue.status, 'pending'))
+          // 优先处理高优先级和较早创建的任务
+          .orderBy(
+            desc(tables.pipelineQueue.priority),
+            asc(tables.pipelineQueue.createdAt),
+          )
+          .limit(1)
+          .for('update', { skipLocked: true })
+      )[0]
 
       if (!highestPriorityPendingTask) return null
 
       const task = highestPriorityPendingTask
-      tx.update(tables.pipelineQueue)
+      await tx
+        .update(tables.pipelineQueue)
         .set({ status: 'in-stages' })
         .where(eq(tables.pipelineQueue.id, task.id))
-        .run()
 
       return { ...task, status: 'in-stages' as const }
     })
@@ -208,7 +213,7 @@ export class QueueManager {
       .update(tables.pipelineQueue)
       .set({
         status: 'completed',
-        completedAt: sql`(unixepoch())`,
+        completedAt: sql`now()`,
       })
       .where(eq(tables.pipelineQueue.id, taskId))
   }
@@ -220,11 +225,12 @@ export class QueueManager {
    */
   async markTaskFailed(taskId: number, errorMessage?: string): Promise<void> {
     const db = useDB()
-    const task = await db
-      .select()
-      .from(tables.pipelineQueue)
-      .where(eq(tables.pipelineQueue.id, taskId))
-      .get()
+    const task = (
+      await db
+        .select()
+        .from(tables.pipelineQueue)
+        .where(eq(tables.pipelineQueue.id, taskId))
+    )[0]
 
     if (!task) return
 
@@ -407,7 +413,7 @@ export class QueueManager {
             if (livePhotoVideo) {
               livePhotoInfo = {
                 isLivePhoto: 1,
-                livePhotoVideoUrl: storageProvider.getPublicUrl(
+                livePhotoVideoUrl: storageProvider.getMediaUrl(
                   livePhotoVideo.videoKey,
                 ),
                 livePhotoVideoKey: livePhotoVideo.videoKey,
@@ -441,9 +447,9 @@ export class QueueManager {
               storageObject.lastModified?.toISOString() ||
               new Date().toISOString(),
             originalUrl: imageBuffers.jpegKey
-              ? storageProvider.getPublicUrl(imageBuffers.jpegKey) // 使用 JPEG 版本作为 originalUrl
-              : storageProvider.getPublicUrl(storageKey),
-            thumbnailUrl: storageProvider.getPublicUrl(thumbnailObject.key),
+              ? storageProvider.getMediaUrl(imageBuffers.jpegKey) // 使用 JPEG 版本作为 originalUrl
+              : storageProvider.getMediaUrl(storageKey),
+            thumbnailUrl: storageProvider.getMediaUrl(thumbnailObject.key),
             thumbnailHash: thumbnailHash
               ? compressUint8Array(thumbnailHash)
               : null,
@@ -520,11 +526,12 @@ export class QueueManager {
             `[${taskId}:in-stage] reverse geocoding for photo ${photoId}`,
           )
 
-          const photo = await db
-            .select()
-            .from(tables.photos)
-            .where(eq(tables.photos.id, photoId))
-            .get()
+          const photo = (
+            await db
+              .select()
+              .from(tables.photos)
+              .where(eq(tables.photos.id, photoId))
+          )[0]
 
           if (!photo) {
             this.logger.warn(
@@ -622,11 +629,12 @@ export class QueueManager {
           `[${taskId}:in-stage] erase location info for photo ${payload.photoId}`,
         )
 
-        const photo = await db
-          .select()
-          .from(tables.photos)
-          .where(eq(tables.photos.id, payload.photoId))
-          .get()
+        const photo = (
+          await db
+            .select()
+            .from(tables.photos)
+            .where(eq(tables.photos.id, payload.photoId))
+        )[0]
 
         if (!photo) {
           throw new Error(`Photo ${payload.photoId} not found`)
@@ -771,7 +779,7 @@ export class QueueManager {
             )
           }
 
-          const livePhotoVideoUrl = storageProvider.getPublicUrl(videoKey)
+          const livePhotoVideoUrl = storageProvider.getMediaUrl(videoKey)
           await db
             .update(tables.photos)
             .set({
@@ -892,12 +900,14 @@ export class QueueManager {
   /**
    * 停止处理队列
    */
-  stopProcessing(): void {
+  async stopProcessing(): Promise<void> {
     if (this.processingInterval) {
       clearInterval(this.processingInterval)
       this.processingInterval = null
       this.logger.warn('Queue processing stopped')
     }
+    while (this.isProcessing)
+      await new Promise((resolve) => setTimeout(resolve, 100))
   }
 
   /**
@@ -909,7 +919,7 @@ export class QueueManager {
     const stats = await db
       .select({
         status: tables.pipelineQueue.status,
-        count: sql<number>`COUNT(*)`,
+        count: sql<number>`COUNT(*)`.mapWith(Number),
       })
       .from(tables.pipelineQueue)
       .groupBy(tables.pipelineQueue.status)

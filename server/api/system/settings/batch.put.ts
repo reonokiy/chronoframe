@@ -53,11 +53,12 @@ export default eventHandler(async (event) => {
     // 获取当前用户ID，如果用户不存在于数据库则返回null
     const db = useDB()
     const currentUser = session.user.id
-      ? db
-          .select()
-          .from(tables.users)
-          .where(eq(tables.users.id, session.user.id))
-          .get()
+      ? (
+          await db
+            .select()
+            .from(tables.users)
+            .where(eq(tables.users.id, session.user.id))
+        )[0]
       : null
     const updatedBy = currentUser ? currentUser.id : undefined
 

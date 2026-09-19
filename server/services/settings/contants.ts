@@ -2,21 +2,11 @@ import type { SettingConfig } from '~~/shared/types/settings'
 import i18nOptions from '~~/i18n/i18n.options'
 
 // 存储提供商的枚举值
-export const STORAGE_PROVIDERS = ['local', 's3', 'openlist'] as const
+export const STORAGE_PROVIDERS = ['local', 's3'] as const
 export type StorageProvider = (typeof STORAGE_PROVIDERS)[number]
 
 export const DEFAULT_SETTINGS = [
   // NAMESPACE: system
-  {
-    namespace: 'system',
-    key: 'firstLaunch',
-    type: 'boolean',
-    value: true,
-    defaultValue: true,
-    label: 'settings.system.firstLaunch.label',
-    description: 'settings.system.firstLaunch.description',
-    isReadonly: true,
-  },
   // NAMESPACE: app
   {
     namespace: 'app',
@@ -100,32 +90,6 @@ export const DEFAULT_SETTINGS = [
     label: 'settings.system.webglImageViewerDebug.label',
     description: 'settings.system.webglImageViewerDebug.description',
     isPublic: true,
-  },
-  {
-    namespace: 'system',
-    key: 'auth.github.enabled',
-    type: 'boolean',
-    defaultValue: false,
-    label: 'settings.system.auth.github.enabled.label',
-    description: 'settings.system.auth.github.enabled.description',
-    isPublic: true,
-  },
-  {
-    namespace: 'system',
-    key: 'auth.github.clientId',
-    type: 'string',
-    defaultValue: '',
-    label: 'settings.system.auth.github.clientId.label',
-    description: 'settings.system.auth.github.clientId.description',
-  },
-  {
-    namespace: 'system',
-    key: 'auth.github.clientSecret',
-    type: 'string',
-    defaultValue: '',
-    label: 'settings.system.auth.github.clientSecret.label',
-    description: 'settings.system.auth.github.clientSecret.description',
-    isSecret: true,
   },
   // NAMESPACE: privacy
   {
@@ -214,14 +178,6 @@ export const DEFAULT_SETTINGS = [
     isPublic: true,
   },
   // NAMESPACE: storage
-  {
-    namespace: 'storage',
-    key: 'provider',
-    type: 'number',
-    defaultValue: null,
-    label: 'settings.storage_provider.provider.label',
-    description: 'settings.storage_provider.provider.description',
-  },
   // NAMESPACE: analytics
   {
     namespace: 'analytics',

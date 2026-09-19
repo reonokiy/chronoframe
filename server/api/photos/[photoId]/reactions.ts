@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and, sql, gt } from 'drizzle-orm'
 
 const REACTION_TYPES = [
   'like',
@@ -35,16 +35,17 @@ async function checkRateLimit(fingerprint: string): Promise<boolean> {
   const now = Date.now()
   const windowStart = new Date(now - RATE_LIMIT_WINDOW)
 
-  const recentReactions = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(tables.photoReactions)
-    .where(
-      and(
-        eq(tables.photoReactions.fingerprint, fingerprint),
-        sql`${tables.photoReactions.createdAt} > ${Math.floor(windowStart.getTime() / 1000)}`,
-      ),
-    )
-    .get()
+  const recentReactions = (
+    await db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(tables.photoReactions)
+      .where(
+        and(
+          eq(tables.photoReactions.fingerprint, fingerprint),
+          gt(tables.photoReactions.createdAt, windowStart),
+        ),
+      )
+  )[0]
 
   return (recentReactions?.count || 0) < MAX_REACTIONS_PER_WINDOW
 }
@@ -67,25 +68,25 @@ export default defineEventHandler(async (event) => {
     const reactions = await db
       .select({
         reactionType: tables.photoReactions.reactionType,
-        count: sql<number>`count(*)`,
+        count: sql<number>`count(*)`.mapWith(Number),
       })
       .from(tables.photoReactions)
       .where(eq(tables.photoReactions.photoId, photoId))
       .groupBy(tables.photoReactions.reactionType)
-      .all()
 
     // 获取当前用户的表态
     const fingerprint = generateFingerprint(event)
-    const userReaction = await db
-      .select()
-      .from(tables.photoReactions)
-      .where(
-        and(
-          eq(tables.photoReactions.photoId, photoId),
-          eq(tables.photoReactions.fingerprint, fingerprint),
-        ),
-      )
-      .get()
+    const userReaction = (
+      await db
+        .select()
+        .from(tables.photoReactions)
+        .where(
+          and(
+            eq(tables.photoReactions.photoId, photoId),
+            eq(tables.photoReactions.fingerprint, fingerprint),
+          ),
+        )
+    )[0]
 
     // 格式化返回数据
     const reactionCounts: Record<string, number> = {}
@@ -130,11 +131,9 @@ export default defineEventHandler(async (event) => {
     }
 
     // 检查照片是否存在
-    const photo = await db
-      .select()
-      .from(tables.photos)
-      .where(eq(tables.photos.id, photoId))
-      .get()
+    const photo = (
+      await db.select().from(tables.photos).where(eq(tables.photos.id, photoId))
+    )[0]
 
     if (!photo) {
       throw createError({
@@ -149,16 +148,17 @@ export default defineEventHandler(async (event) => {
     const userAgent = headers['user-agent']
 
     // 检查用户是否已经对该照片表态
-    const existingReaction = await db
-      .select()
-      .from(tables.photoReactions)
-      .where(
-        and(
-          eq(tables.photoReactions.photoId, photoId),
-          eq(tables.photoReactions.fingerprint, fingerprint),
-        ),
-      )
-      .get()
+    const existingReaction = (
+      await db
+        .select()
+        .from(tables.photoReactions)
+        .where(
+          and(
+            eq(tables.photoReactions.photoId, photoId),
+            eq(tables.photoReactions.fingerprint, fingerprint),
+          ),
+        )
+    )[0]
 
     if (existingReaction) {
       // 更新现有表态
@@ -197,16 +197,17 @@ export default defineEventHandler(async (event) => {
   if (method === 'DELETE') {
     const fingerprint = generateFingerprint(event)
 
-    const existingReaction = await db
-      .select()
-      .from(tables.photoReactions)
-      .where(
-        and(
-          eq(tables.photoReactions.photoId, photoId),
-          eq(tables.photoReactions.fingerprint, fingerprint),
-        ),
-      )
-      .get()
+    const existingReaction = (
+      await db
+        .select()
+        .from(tables.photoReactions)
+        .where(
+          and(
+            eq(tables.photoReactions.photoId, photoId),
+            eq(tables.photoReactions.fingerprint, fingerprint),
+          ),
+        )
+    )[0]
 
     if (!existingReaction) {
       throw createError({
