@@ -14,7 +14,11 @@ export default defineEventHandler(async (event) => {
   const buffer = await storageProvider.get(key)
   if (!buffer)
     throw createError({ statusCode: 404, statusMessage: 'Thumbnail not found' })
-  setHeader(event, 'Cache-Control', 'private, no-store')
+  const thumbnail = await sharp(buffer)
+    .rotate()
+    .jpeg({ quality: 85 })
+    .toBuffer()
+  setMediaCacheHeaders(event)
   setHeader(event, 'Content-Type', 'image/jpeg')
-  return sharp(buffer).rotate().jpeg({ quality: 85 }).toBuffer()
+  return thumbnail
 })

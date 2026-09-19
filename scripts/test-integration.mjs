@@ -238,32 +238,34 @@ try {
   const portServer = createServer()
   const base = await listen(portServer)
   await new Promise((resolve) => portServer.close(resolve))
-  app = spawn(process.execPath, ['.output/server/index.mjs'], {
-    env: {
-      ...process.env,
-      NODE_ENV: 'production',
-      NODE_EXTRA_CA_CERTS: join(certDir, 'cert.pem'),
-      DATABASE_URL: databaseUrl,
-      NITRO_HOST: '127.0.0.1',
-      NITRO_PORT: new URL(base).port,
-      NUXT_SESSION_PASSWORD: randomBytes(48).toString('hex'),
-      NUXT_OIDC_ISSUER: issuer,
-      NUXT_OIDC_CLIENT_ID: 'chronoframe',
-      NUXT_OIDC_CLIENT_SECRET: randomBytes(24).toString('hex'),
-      NUXT_OIDC_REDIRECT_URI: `${base.replace('http:', 'https:')}/api/auth/oidc/callback`,
-      NUXT_OIDC_ALLOWED_SUBJECTS: 'owner',
-      NUXT_STORAGE_DRIVER: 's3',
-      NUXT_STORAGE_S3_ENDPOINT: endpoint,
-      NUXT_STORAGE_S3_BUCKET: bucket,
-      NUXT_STORAGE_S3_REGION: 'us-east-1',
-      NUXT_STORAGE_S3_ACCESS_KEY_ID: accessKeyId,
-      NUXT_STORAGE_S3_SECRET_ACCESS_KEY: secretAccessKey,
-      NUXT_STORAGE_S3_FORCE_PATH_STYLE: 'true',
-      NUXT_PUBLIC_GALLERY_PUBLIC: 'false',
-      CFRAME_WORKER_COUNT: '1',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  const startApp = (publicGallery) =>
+    spawn(process.execPath, ['.output/server/index.mjs'], {
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+        NODE_EXTRA_CA_CERTS: join(certDir, 'cert.pem'),
+        DATABASE_URL: databaseUrl,
+        NITRO_HOST: '127.0.0.1',
+        NITRO_PORT: new URL(base).port,
+        NUXT_SESSION_PASSWORD: randomBytes(48).toString('hex'),
+        NUXT_OIDC_ISSUER: issuer,
+        NUXT_OIDC_CLIENT_ID: 'chronoframe',
+        NUXT_OIDC_CLIENT_SECRET: randomBytes(24).toString('hex'),
+        NUXT_OIDC_REDIRECT_URI: `${base.replace('http:', 'https:')}/api/auth/oidc/callback`,
+        NUXT_OIDC_ALLOWED_SUBJECTS: 'owner',
+        NUXT_STORAGE_DRIVER: 's3',
+        NUXT_STORAGE_S3_ENDPOINT: endpoint,
+        NUXT_STORAGE_S3_BUCKET: bucket,
+        NUXT_STORAGE_S3_REGION: 'us-east-1',
+        NUXT_STORAGE_S3_ACCESS_KEY_ID: accessKeyId,
+        NUXT_STORAGE_S3_SECRET_ACCESS_KEY: secretAccessKey,
+        NUXT_STORAGE_S3_FORCE_PATH_STYLE: 'true',
+        NUXT_PUBLIC_GALLERY_PUBLIC: String(publicGallery),
+        CFRAME_WORKER_COUNT: '1',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  app = startApp(false)
   let appOutput = ''
   app.stdout.on('data', (b) => {
     appOutput += b
@@ -366,6 +368,7 @@ try {
     404,
   )
 
+  await db`insert into photos (id, storage_key, thumbnail_key) values ('cache-test', 'photos/test.jpg', 'photos/test.jpg')`
   const media = await request('/media/photos/test.jpg', cookie)
   assert.equal(media.status, 200)
   assert.deepEqual(Buffer.from(await media.arrayBuffer()), photo)
@@ -433,7 +436,7 @@ try {
     return task?.status === 'completed'
   }, 'photo processing')
   const [indexedPhoto] =
-    await db`select original_url, thumbnail_url from photos`
+    await db`select original_url, thumbnail_url from photos where storage_key = 'photos/upload.jpg'`
   assert.ok(indexedPhoto.original_url.startsWith('/media/'))
   assert.ok(indexedPhoto.thumbnail_url.startsWith('/media/'))
   assert.equal((await request(indexedPhoto.thumbnail_url, cookie)).status, 200)
@@ -488,6 +491,100 @@ try {
   assert.deepEqual(
     users.map((u) => u.oidc_subject),
     ['owner'],
+  )
+  // Exercise public/private classification against the real middleware, database,
+  // S3 streams and generated thumbnails, including requests carrying a session.
+  app.kill('SIGTERM')
+  await once(app, 'exit')
+  app = startApp(true)
+  app.stdout.on('data', () => {})
+  app.stderr.on('data', () => {})
+  await until(
+    async () => (await fetch(`${base}/api/health/ready`)).ok,
+    'public application',
+  )
+  const publicLogin = await login('owner')
+  assert.equal(publicLogin.status, 302)
+  const publicCookie = publicLogin.headers
+    .getSetCookie()
+    .filter((c) => !c.startsWith('chronoframe-oidc='))
+    .map((c) => c.split(';')[0])
+    .join('; ')
+  const publicPaths = [
+    '/media/photos/test.jpg',
+    `/thumb/${encodeURIComponent('/media/photos/test.jpg')}`,
+    indexedPhoto.original_url,
+    indexedPhoto.thumbnail_url,
+  ]
+  for (const path of publicPaths) {
+    for (const session of [undefined, publicCookie]) {
+      const response = await request(path, session)
+      assert.equal(response.status, 200, path)
+      assert.equal(
+        response.headers.get('cache-control'),
+        'public, max-age=60, s-maxage=300, must-revalidate',
+        path,
+      )
+      assert.equal(response.headers.has('set-cookie'), false, path)
+      assert.ok((await response.arrayBuffer()).byteLength > 0)
+    }
+  }
+  const publicRange = await request('/media/photos/test.jpg', undefined, {
+    headers: { range: 'bytes=0-9' },
+  })
+  assert.equal(publicRange.status, 206)
+  assert.match(publicRange.headers.get('cache-control'), /public/)
+  assert.equal((await publicRange.arrayBuffer()).byteLength, 10)
+  const publicHead = await request('/media/photos/test.jpg', undefined, {
+    method: 'HEAD',
+  })
+  assert.equal(publicHead.status, 200)
+  assert.match(publicHead.headers.get('cache-control'), /public/)
+  assert.equal(publicHead.headers.has('set-cookie'), false)
+  assert.equal(
+    (await request('/image/photos/test.jpg')).headers.get('location'),
+    '/media/photos/test.jpg',
+  )
+
+  await db`insert into photos (id, storage_key) values ('missing-cache-test', 'photos/missing.jpg')`
+  for (const [path, status, options] of [
+    ['/media/photos/missing.jpg', 404, {}],
+    ['/media/photos/unknown.jpg', 401, {}],
+    ['/storage/photos/test.jpg', 404, {}],
+    ['/media/photos/test.jpg', 416, { headers: { range: 'invalid' } }],
+  ]) {
+    const response = await request(path, undefined, options)
+    assert.equal(response.status, status, path)
+    // Nitro enforces no-cache on 404 responses; other errors retain no-store.
+    assert.match(
+      response.headers.get('cache-control'),
+      /no-store|no-cache/,
+      path,
+    )
+  }
+  const [hiddenAlbum] =
+    await db`insert into albums (title, is_hidden) values ('Private media test', true) returning id`
+  const [visibleAlbum] =
+    await db`insert into albums (title, is_hidden) values ('Public media test', false) returning id`
+  for (const albumId of [hiddenAlbum.id, visibleAlbum.id]) {
+    await db`insert into album_photos (album_id, photo_id) values (${albumId}, 'cache-test')`
+  }
+  for (const path of publicPaths.slice(0, 2)) {
+    const anonymous = await request(path)
+    assert.equal(anonymous.status, 401, path)
+    assert.match(anonymous.headers.get('cache-control'), /no-store/, path)
+    const privateRead = await request(path, publicCookie)
+    assert.equal(privateRead.status, 200, path)
+    assert.equal(
+      privateRead.headers.get('cache-control'),
+      'private, no-store',
+      path,
+    )
+  }
+  assert.equal((await request('/image/photos/test.jpg')).status, 401)
+  assert.equal((await request('/api/profile')).status, 401)
+  console.log(
+    'PASS: public media/cache headers without cookies; private and hidden media denial/no-store; ranges, HEAD, redirects and errors',
   )
   console.log(
     'PASS: PostgreSQL migration and album CRUD; OIDC signature/state/allowlist; retired login routes; private S3 upload/read/range and photo pipeline; anonymous access denial',

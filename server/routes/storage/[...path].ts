@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
     const etag = `W/"${stat.size}-${stat.mtimeMs}"`
     setHeader(event, 'ETag', etag)
     setHeader(event, 'Last-Modified', stat.mtime.toUTCString())
-    setHeader(event, 'Cache-Control', 'private, no-store')
+    setMediaCacheHeaders(event)
 
     // Content-Type
     const contentType = guessContentType(absolute)
@@ -109,6 +109,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch {
+    setHeader(event, 'Cache-Control', PRIVATE_MEDIA_CACHE_CONTROL)
     throw createError({ statusCode: 404, statusMessage: 'Not Found' })
   }
 

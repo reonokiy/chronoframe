@@ -20,7 +20,30 @@ Identity is keyed by `(issuer, subject)`; names and email are profile attributes
 
 Set `NUXT_SESSION_PASSWORD` to a strong random value of at least 32 characters. Production requires it explicitly and HTTPS for both OIDC issuer and callback. Production session cookies are Secure, HttpOnly and SameSite=Lax. TLS terminates at the gateway. Do not put S3/OIDC secrets in the database or frontend runtime configuration.
 
-The gallery defaults to requiring sign-in for pages, APIs and media. `NUXT_PUBLIC_GALLERY_PUBLIC=true` permits public gallery browsing and public delivery through the application while keeping the bucket private. This is a site-level visibility setting, not per-photo sharing. Hidden albums are a display feature, not an authorization boundary for their media. Administrative operations still require an allowed OIDC session.
+The gallery defaults to requiring sign-in for pages, APIs and media. `NUXT_PUBLIC_GALLERY_PUBLIC=true` permits public gallery browsing and public delivery through the application while keeping the bucket private. This is a site-level visibility setting, not per-photo sharing. Media belonging to any hidden album requires an allowed OIDC session, even if the photo also belongs to a visible album. Unindexed objects remain private. Administrative operations still require an allowed OIDC session.
+
+## CDN media caching
+
+Only registered media in a public gallery, with no hidden-album membership, returns
+`Cache-Control: public, max-age=60, s-maxage=300, must-revalidate`. Originals,
+generated thumbnails and local-file responses share this decision. Public media
+requests do not create or refresh session cookies, including when a signed-in
+user views them. Private media explicitly uses `private, no-store`; failed media
+requests remain uncacheable (Nitro overrides 404 responses with `no-cache`).
+Omitting the header would allow default CDN caching.
+The private-by-default deployment does not become public when CDN proxying is enabled.
+
+Visibility is checked when a request reaches the origin. Previously public media
+can remain in an edge cache for up to five minutes (and a browser for one minute)
+after being hidden, removed, or switching the whole gallery to private. Purge all
+cached URL variants before relying on immediate revocation. Do not configure a
+Cloudflare rule that overrides private/no-store or serves stale media. There is
+no immutable or stale-while-revalidate directive because URLs can retain their
+names when visibility or content changes.
+
+Cloudflare normally caches supported filename extensions. Custom extensionless
+media URLs require a separate cache eligibility rule that still respects these
+origin headers; do not enable a blanket cache-everything rule for the gallery.
 
 ## Private S3
 

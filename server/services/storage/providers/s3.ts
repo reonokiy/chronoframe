@@ -163,6 +163,12 @@ export class S3StorageProvider implements StorageProvider {
     )
   }
 
+  async head(key: string) {
+    return this.client.send(
+      new HeadObjectCommand({ Bucket: this.config.bucket, Key: key }),
+    )
+  }
+
   async getSignedUrl(
     key: string,
     expiresIn: number = 3600,

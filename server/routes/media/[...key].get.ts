@@ -14,8 +14,11 @@ export default defineEventHandler(async (event) => {
       const range = getHeader(event, 'range')
       if (range && !/^bytes=\d*-\d*$/.test(range))
         throw createError({ statusCode: 416, statusMessage: 'Invalid range' })
-      const object = await storageProvider.open(key, range)
-      if (!object.Body)
+      const head = event.method === 'HEAD'
+      const object = head
+        ? { ...(await storageProvider.head(key)), Body: undefined }
+        : await storageProvider.open(key, range)
+      if (!head && !object.Body)
         throw createError({ statusCode: 404, statusMessage: 'Media not found' })
       setHeader(
         event,
@@ -29,8 +32,14 @@ export default defineEventHandler(async (event) => {
         setResponseStatus(event, 206)
         setHeader(event, 'Content-Range', object.ContentRange)
       }
+      if (object.ETag) setHeader(event, 'ETag', object.ETag)
+      if (object.LastModified)
+        setHeader(event, 'Last-Modified', object.LastModified.toUTCString())
+      setMediaCacheHeaders(event)
+      if (head) return ''
       return sendStream(event, object.Body as Readable)
     } catch (error) {
+      setHeader(event, 'Cache-Control', PRIVATE_MEDIA_CACHE_CONTROL)
       const status =
         (error as any).$metadata?.httpStatusCode || (error as any).statusCode
       throw createError({
