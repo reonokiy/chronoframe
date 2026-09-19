@@ -21,16 +21,15 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
 
   // 获取所有照片的表态统计
-  const reactions = db
+  const reactions = await db
     .select({
       photoId: tables.photoReactions.photoId,
       reactionType: tables.photoReactions.reactionType,
-      count: sql<number>`count(*)`,
+      count: sql<number>`count(*)`.mapWith(Number),
     })
     .from(tables.photoReactions)
     .where(inArray(tables.photoReactions.photoId, ids as string[]))
     .groupBy(tables.photoReactions.photoId, tables.photoReactions.reactionType)
-    .all()
 
   const result: Record<string, Record<string, number>> = {}
 
@@ -50,7 +49,7 @@ export default defineEventHandler(async (event) => {
   // 填充实际的计数
   reactions.forEach((r) => {
     if (r.photoId && r.reactionType) {
-      result[r.photoId][r.reactionType] = r.count
+      result[r.photoId]![r.reactionType] = r.count
     }
   })
 

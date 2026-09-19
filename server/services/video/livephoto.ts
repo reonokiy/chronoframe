@@ -1,6 +1,6 @@
 import path from 'path'
 import { eq } from 'drizzle-orm'
-import { getStorageManager } from '~~/server/plugins/3.storage'
+import { getStorageManager } from '~~/server/services/storage'
 
 /**
  * 处理 LivePhoto MOV 文件，匹配相同文件名的照片并更新 LivePhoto 信息
@@ -56,7 +56,7 @@ export const processLivePhotoVideo = async (
     }
 
     // 获取视频的公共 URL
-    const videoUrl = storageProvider.getPublicUrl(videoKey)
+    const videoUrl = storageProvider.getMediaUrl(videoKey)
 
     // 更新照片记录，设置 LivePhoto 信息
     await db

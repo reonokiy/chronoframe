@@ -28,3 +28,9 @@ export function getGlobalStorageManager(): StorageManager | null {
 export function isStorageManagerInitialized(): boolean {
   return globalStorageManager !== null
 }
+
+export function getStorageManager() {
+  const manager = getGlobalStorageManager()
+  if (!manager) throw new Error('Storage manager not initialized')
+  return manager
+}

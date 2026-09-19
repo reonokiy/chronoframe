@@ -27,11 +27,9 @@ export default eventHandler(async (event) => {
   const db = useDB()
 
   // 检查相簿是否存在
-  const album = await db
-    .select()
-    .from(tables.albums)
-    .where(eq(tables.albums.id, albumId))
-    .get()
+  const album = (
+    await db.select().from(tables.albums).where(eq(tables.albums.id, albumId))
+  )[0]
 
   if (!album) {
     throw createError({
@@ -41,7 +39,7 @@ export default eventHandler(async (event) => {
   }
 
   // 使用事务更新相簿
-  const updatedAlbum = db.transaction((tx) => {
+  const updatedAlbum = await db.transaction(async (tx) => {
     // 更新基本信息
     const updateData: Record<string, any> = {
       updatedAt: new Date(),
@@ -62,17 +60,17 @@ export default eventHandler(async (event) => {
       updateData.isHidden = body.isHidden
     }
 
-    tx.update(tables.albums)
+    await tx
+      .update(tables.albums)
       .set(updateData)
       .where(eq(tables.albums.id, albumId))
-      .run()
 
     // 如果提供了新的照片列表，替换现有照片
     if (body.photoIds !== undefined) {
       // 删除现有的相簌-照片关系
-      tx.delete(tables.albumPhotos)
+      await tx
+        .delete(tables.albumPhotos)
         .where(eq(tables.albumPhotos.albumId, albumId))
-        .run()
 
       // 添加新的相簌-照片关系
       const photoIds = new Set(body.photoIds)
@@ -85,23 +83,21 @@ export default eventHandler(async (event) => {
       if (photoIds.size > 0) {
         let pos = 1000000
         for (const photoId of photoIds) {
-          tx.insert(tables.albumPhotos)
+          await tx
+            .insert(tables.albumPhotos)
             .values({
               albumId,
               photoId,
               position: (pos += 10),
             })
             .onConflictDoNothing()
-            .run()
         }
       }
     }
 
-    return tx
-      .select()
-      .from(tables.albums)
-      .where(eq(tables.albums.id, albumId))
-      .get()
+    return (
+      await tx.select().from(tables.albums).where(eq(tables.albums.id, albumId))
+    )[0]
   })
 
   return updatedAlbum

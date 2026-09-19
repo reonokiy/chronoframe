@@ -75,7 +75,8 @@ export default defineEventHandler(async (event) => {
       retriedTasks: failedTasks.map((task) => ({
         id: task.id,
         type: task.payload.type,
-        storageKey: task.payload.storageKey,
+        storageKey:
+          'storageKey' in task.payload ? task.payload.storageKey : undefined,
       })),
       skippedTasks: nonFailedTasks.map((task) => ({
         id: task.id,

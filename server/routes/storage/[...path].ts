@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { createReadStream, promises as fs } from 'node:fs'
-import { getStorageManager } from '../../plugins/3.storage'
+import { getStorageManager } from '../../services/storage'
 // lightweight: avoid TS type dep; fallback when not resolvable
 const guessContentType = (filePath: string): string => {
   const ext = (filePath.split('.').pop() || '').toLowerCase()
@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
     const etag = `W/"${stat.size}-${stat.mtimeMs}"`
     setHeader(event, 'ETag', etag)
     setHeader(event, 'Last-Modified', stat.mtime.toUTCString())
-    setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
+    setHeader(event, 'Cache-Control', 'private, no-store')
 
     // Content-Type
     const contentType = guessContentType(absolute)

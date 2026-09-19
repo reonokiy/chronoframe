@@ -118,7 +118,7 @@ export class WorkerPool {
     // 停止所有工作器
     const stopPromises = this.workers.map(async (worker, _index) => {
       try {
-        worker.stopProcessing()
+        await worker.stopProcessing()
         this.logger.info(`worker [${worker.getWorkerId()}] stopped`)
       } catch (error) {
         this.logger.error(
@@ -225,7 +225,7 @@ export class WorkerPool {
         (w) => w.getWorkerId() === workerStat.workerId,
       )
       if (worker) {
-        worker.stopProcessing()
+        await worker.stopProcessing()
 
         setTimeout(() => {
           worker.startProcessing(this.config.intervalMs)
@@ -243,7 +243,7 @@ export class WorkerPool {
       return {}
     }
 
-    return await this.workers[0].getQueueStats()
+    return await this.workers[0]!.getQueueStats()
   }
 
   /**
@@ -304,7 +304,7 @@ export class WorkerPool {
    * 获取第一个工作器（用于添加任务）
    */
   getFirstWorker(): QueueManager | null {
-    return this.workers.length > 0 ? this.workers[0] : null
+    return this.workers[0] ?? null
   }
 
   /**

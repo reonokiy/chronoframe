@@ -17,11 +17,6 @@ export type SettingConfig = Omit<
   enum?: ReadonlyArray<string>
 }
 
-export type SettingStorageProvider =
-  typeof schema.settings_storage_providers.$inferSelect
-export type NewSettingStorageProvider =
-  typeof schema.settings_storage_providers.$inferInsert
-
 /**
  * UI 字段类型枚举
  * 定义在 shared 中以便前端使用

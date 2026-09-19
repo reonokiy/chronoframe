@@ -35,9 +35,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (type) {
-      conditions.push(
-        eq(sql`json_extract(${tables.pipelineQueue.payload}, '$.type')`, type),
-      )
+      conditions.push(eq(sql`${tables.pipelineQueue.payload}->>'type'`, type))
     }
 
     const whereCondition =

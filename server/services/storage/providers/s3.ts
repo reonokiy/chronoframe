@@ -1,3 +1,5 @@
+import type { S3StorageConfig } from '../../../../shared/types/storage'
+import type { Logger } from '../../../utils/logger'
 import type { _Object, S3ClientConfig } from '@aws-sdk/client-s3'
 import {
   DeleteObjectCommand,
@@ -65,11 +67,12 @@ export class S3StorageProvider implements StorageProvider {
     contentType?: string,
   ): Promise<StorageObject> {
     try {
+      const prefix = (this.config.prefix || '').replace(/^\/+|\/+$/g, '')
+      const cleanKey = key.replace(/^\/+/, '')
       const absoluteKey =
-        `${(this.config.prefix || '').replace(/\/+$/, '')}/${key}`.replace(
-          /^\/+/,
-          '',
-        )
+        prefix && !cleanKey.startsWith(`${prefix}/`)
+          ? `${prefix}/${cleanKey}`
+          : cleanKey
       const cmd = new PutObjectCommand({
         Bucket: this.config.bucket,
         Key: absoluteKey,
@@ -146,34 +149,18 @@ export class S3StorageProvider implements StorageProvider {
     }
   }
 
-  getPublicUrl(key: string): string {
-    const { cdnUrl, bucket, region, endpoint } = this.config
+  getMediaUrl(key: string): string {
+    return `/media/${key.split('/').map(encodeURIComponent).join('/')}`
+  }
 
-    // CDN URL
-    if (cdnUrl) {
-      return `${cdnUrl.replace(/\/$/, '')}/${key}`
-    }
-
-    // Default AWS S3 endpoint
-    if (!endpoint) {
-      return `https://${bucket}.s3.${region}.amazonaws.com/${key}`
-    } else if (endpoint.includes('amazonaws.com')) {
-      return `https://${bucket}.s3.${region}.amazonaws.com/${key}`
-    }
-
-    // Alibaba Cloud OSS
-    if (endpoint.includes('aliyuncs.com')) {
-      const baseUrl = endpoint.replace(/\/$/, '')
-      if (baseUrl.indexOf('//') === -1) {
-        throw new Error('Invalid endpoint URL')
-      }
-      const protocol = baseUrl.split('//')[0]
-      const remainder = baseUrl.split('//')[1]
-      return `${protocol}//${bucket}.${remainder}/${key}`
-    }
-
-    // Custom endpoint
-    return `${endpoint.replace(/\/$/, '')}/${bucket}/${key}`
+  async open(key: string, range?: string) {
+    return this.client.send(
+      new GetObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        Range: range,
+      }),
+    )
   }
 
   async getSignedUrl(

@@ -3,16 +3,14 @@ export type { StorageProvider, StorageObject } from './interfaces'
 export {
   s3StorageConfigSchema,
   localStorageConfigSchema,
-  openListStorageConfigSchema,
   storageConfigSchema,
-} from '~~/shared/types/storage'
+} from '../../../shared/types/storage'
 
 export type {
   S3StorageConfig,
   LocalStorageConfig,
-  OpenListStorageConfig,
   StorageConfig,
-} from '~~/shared/types/storage'
+} from '../../../shared/types/storage'
 
 export { StorageProviderFactory, StorageManager } from './manager'
 
@@ -24,10 +22,10 @@ export type {
 
 export { S3StorageProvider } from './providers/s3'
 export { LocalStorageProvider } from './providers/local'
-export { OpenListStorageProvider } from './providers/openlist'
 
 export {
   setGlobalStorageManager,
   getGlobalStorageManager,
+  getStorageManager,
   isStorageManagerInitialized,
 } from './events'

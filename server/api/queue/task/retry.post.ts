@@ -18,11 +18,12 @@ export default defineEventHandler(async (event) => {
     const db = useDB()
 
     // 检查任务是否存在且状态为失败
-    const task = await db
-      .select()
-      .from(tables.pipelineQueue)
-      .where(eq(tables.pipelineQueue.id, taskId))
-      .get()
+    const task = (
+      await db
+        .select()
+        .from(tables.pipelineQueue)
+        .where(eq(tables.pipelineQueue.id, taskId))
+    )[0]
 
     if (!task) {
       throw createError({
@@ -56,7 +57,8 @@ export default defineEventHandler(async (event) => {
       taskId,
       payload: {
         type: task.payload.type,
-        storageKey: task.payload.storageKey,
+        storageKey:
+          'storageKey' in task.payload ? task.payload.storageKey : undefined,
       },
     }
   } catch (error) {

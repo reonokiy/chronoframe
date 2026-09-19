@@ -23,7 +23,7 @@ export interface StorageProvider {
   ): Promise<StorageObject>
   delete(key: string): Promise<void>
   get(key: string): Promise<Buffer | null>
-  getPublicUrl(key: string): string
+  getMediaUrl(key: string): string
   getSignedUrl?(
     key: string,
     expiresIn?: number,

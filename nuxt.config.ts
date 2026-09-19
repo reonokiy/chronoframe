@@ -58,11 +58,8 @@ export default defineNuxtConfig({
           siteId: '',
         },
       } satisfies AnalyticsConfig,
-      oauth: {
-        github: {
-          enabled: false,
-        },
-      },
+      galleryPublic: false,
+      oidcLabel: 'Single sign-on',
     },
     mapbox: {
       accessToken: '',
@@ -70,49 +67,32 @@ export default defineNuxtConfig({
     nominatim: {
       baseUrl: 'https://nominatim.openstreetmap.org',
     },
-    STORAGE_PROVIDER: 's3' satisfies 's3' | 'local' | 'openlist',
-    provider: {
+    oidc: {
+      issuer: '',
+      clientId: '',
+      clientSecret: '',
+      redirectUri: '',
+      allowedSubjects: '',
+    },
+    storage: {
+      driver: '',
+      localPath: './data/storage',
+      prefix: 'photos',
       s3: {
         endpoint: '',
         bucket: '',
         region: 'auto',
         accessKeyId: '',
         secretAccessKey: '',
-        prefix: '',
-        cdnUrl: '',
         forcePathStyle: false,
       },
-      local: {
-        localPath: './data/storage',
-        baseUrl: '/storage',
-        prefix: 'photos/',
-      },
-      openlist: {
-        baseUrl: '',
-        rootPath: '',
-        token: '',
-        endpoints: {
-          upload: '/api/fs/put',
-          download: '',
-          list: '',
-          delete: '/api/fs/remove',
-          meta: '/api/fs/get',
-        },
-        pathField: 'path',
-        cdnUrl: '',
-      } as {
-        baseUrl: string
-        rootPath: string
-        token: string
-        endpoints: {
-          upload: string
-          download: string
-          list: string
-          delete: string
-          meta: string
-        }
-        pathField: string
-        cdnUrl: string
+    },
+    session: {
+      maxAge: 60 * 60 * 12,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        httpOnly: true,
       },
     },
     upload: {
@@ -126,8 +106,6 @@ export default defineNuxtConfig({
         mode: 'skip' as 'warn' | 'block' | 'skip',
       },
     },
-    /** @deprecated Defaults to allow insecure cookies now */
-    allowInsecureCookie: false,
   },
 
   nitro: {
@@ -243,8 +221,8 @@ export default defineNuxtConfig({
 
   fonts: {
     families: [
-      { name: "Rubik", weights: [400, 500, 600, 700], global: true },
-      { name: "Noto Sans SC", weights: [400, 500, 600, 700], global: true },
+      { name: 'Rubik', weights: [400, 500, 600, 700], global: true },
+      { name: 'Noto Sans SC', weights: [400, 500, 600, 700], global: true },
     ],
   },
 

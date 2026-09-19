@@ -48,6 +48,15 @@ export default eventHandler(async (event) => {
 
   const body = await readBody(event)
   const { fileName, contentType, skipDuplicateCheck } = body
+  if (
+    typeof fileName !== 'string' ||
+    fileName.includes('/') ||
+    fileName.includes('\\') ||
+    [...fileName].some((char) => char.charCodeAt(0) < 32) ||
+    fileName === '.' ||
+    fileName === '..'
+  )
+    throw createError({ statusCode: 400, statusMessage: 'Invalid filename' })
   const isVideoUpload = fileName ? isVideoFile(fileName, contentType) : false
 
   if (!fileName) {
@@ -58,32 +67,39 @@ export default eventHandler(async (event) => {
   }
 
   try {
-    const objectKey = `${(storageProvider.config?.prefix || '').replace(/\/+$/, '')}/${fileName}`
+    const objectKey =
+      `${(storageProvider.config?.prefix || '').replace(/^\/+|\/+$/g, '')}/${fileName}`.replace(
+        /^\/+/,
+        '',
+      )
 
     // 重复文件检测
     const duplicateCheckEnabled =
       ((await settingsManager.get<boolean>(
         'system',
         'upload.duplicateCheck.enabled',
-      )) ?? true) && !skipDuplicateCheck
+      )) ??
+        true) &&
+      !skipDuplicateCheck
     let existingPhoto = null
 
     if (duplicateCheckEnabled) {
       const photoId = generateSafePhotoId(objectKey)
       const db = useDB()
 
-      existingPhoto = await db
-        .select({
-          id: tables.photos.id,
-          title: tables.photos.title,
-          storageKey: tables.photos.storageKey,
-          originalUrl: tables.photos.originalUrl,
-          thumbnailUrl: tables.photos.thumbnailUrl,
-          dateTaken: tables.photos.dateTaken,
-        })
-        .from(tables.photos)
-        .where(eq(tables.photos.id, photoId))
-        .get()
+      existingPhoto = (
+        await db
+          .select({
+            id: tables.photos.id,
+            title: tables.photos.title,
+            storageKey: tables.photos.storageKey,
+            originalUrl: tables.photos.originalUrl,
+            thumbnailUrl: tables.photos.thumbnailUrl,
+            dateTaken: tables.photos.dateTaken,
+          })
+          .from(tables.photos)
+          .where(eq(tables.photos.id, photoId))
+      )[0]
 
       if (
         existingPhoto &&

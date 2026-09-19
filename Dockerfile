@@ -24,6 +24,8 @@ RUN apk add --no-cache ca-certificates perl exiftool \
 	&& install -Dm755 "$(readlink -f /usr/bin/env)" /opt/runtime-bin/env \
 	&& install -Dm755 "$(readlink -f /usr/bin/exiftool)" /opt/runtime-bin/exiftool
 
+RUN mkdir -p /opt/app-data /opt/app-tmp
+
 FROM scratch AS runtime
 WORKDIR /app
 
@@ -39,13 +41,16 @@ COPY --from=runtime_deps /etc/ssl /etc/ssl
 COPY --from=build /usr/src/app/.output ./.output
 COPY --from=build /usr/src/app/server/database/migrations ./server/database/migrations
 
+COPY --from=runtime_deps --chown=65532:65532 /opt/app-data /app/data
+COPY --from=runtime_deps --chown=65532:65532 /opt/app-tmp /tmp
+USER 65532:65532
+
 EXPOSE 3000
-VOLUME ["/app/data"]
 
 ENV NODE_ENV=production
 ENV NITRO_PORT=3000
 ENV NITRO_HOST=0.0.0.0
-ENV DATABASE_URL=./data/app.sqlite3
+ENV NITRO_SHUTDOWN_TIMEOUT=110000
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 ENV EXIFTOOL_PATH=/usr/bin/exiftool

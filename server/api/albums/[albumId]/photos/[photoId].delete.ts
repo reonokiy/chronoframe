@@ -24,16 +24,17 @@ export default eventHandler(async (event) => {
   const db = useDB()
 
   // 检查相簌-照片关系是否存在
-  const relation = await db
-    .select()
-    .from(tables.albumPhotos)
-    .where(
-      and(
-        eq(tables.albumPhotos.albumId, albumId),
-        eq(tables.albumPhotos.photoId, photoId),
-      ),
-    )
-    .get()
+  const relation = (
+    await db
+      .select()
+      .from(tables.albumPhotos)
+      .where(
+        and(
+          eq(tables.albumPhotos.albumId, albumId),
+          eq(tables.albumPhotos.photoId, photoId),
+        ),
+      )
+  )[0]
 
   if (!relation) {
     throw createError({
@@ -43,29 +44,27 @@ export default eventHandler(async (event) => {
   }
 
   // 使用事务删除照片关系，如果该照片是封面则更新为 null
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     // 删除相簌-照片关系
-    tx.delete(tables.albumPhotos)
+    await tx
+      .delete(tables.albumPhotos)
       .where(
         and(
           eq(tables.albumPhotos.albumId, albumId),
           eq(tables.albumPhotos.photoId, photoId),
         ),
       )
-      .run()
 
     // 如果该照片是封面，清除封面
-    const album = tx
-      .select()
-      .from(tables.albums)
-      .where(eq(tables.albums.id, albumId))
-      .get()
+    const album = (
+      await tx.select().from(tables.albums).where(eq(tables.albums.id, albumId))
+    )[0]
 
     if (album && album.coverPhotoId === photoId) {
-      tx.update(tables.albums)
+      await tx
+        .update(tables.albums)
         .set({ coverPhotoId: null, updatedAt: new Date() })
         .where(eq(tables.albums.id, albumId))
-        .run()
     }
   })
 

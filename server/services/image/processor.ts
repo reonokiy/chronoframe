@@ -1,7 +1,7 @@
 import path from 'path'
 import bmp from '@vingle/bmp-js'
 import heicConvert from 'heic-convert'
-import { getStorageManager } from '~~/server/plugins/3.storage'
+import { getStorageManager } from '~~/server/services/storage'
 import sharp from 'sharp'
 import { withRetry, RetryPresets, RetryConditions } from '../../utils/retry'
 
@@ -24,17 +24,17 @@ const tryExtractJpegSize = (
   if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null
   let offset = 2
   while (offset + 9 < buffer.length) {
-    if (buffer[offset] !== 0xff) {
+    if (buffer[offset]! !== 0xff) {
       offset++
       continue
     }
-    const marker = buffer[offset + 1]
+    const marker = buffer[offset + 1]!
     offset += 2
     // Skip padding FFs
     if (marker === 0xff) continue
     // Standalone markers without length
     if (marker === 0xd8 || marker === 0xd9) continue
-    const length = (buffer[offset] << 8) + buffer[offset + 1]
+    const length = (buffer[offset]! << 8) + buffer[offset + 1]!
     if (length < 2) break
     // SOF0..SOF3 and SOF5..SOF7 indicate dimensions
     if (
@@ -42,8 +42,8 @@ const tryExtractJpegSize = (
       (marker >= 0xc5 && marker <= 0xc7)
     ) {
       if (offset + 7 >= buffer.length) break
-      const height = (buffer[offset + 3] << 8) + buffer[offset + 4]
-      const width = (buffer[offset + 5] << 8) + buffer[offset + 6]
+      const height = (buffer[offset + 3]! << 8) + buffer[offset + 4]!
+      const width = (buffer[offset + 5]! << 8) + buffer[offset + 6]!
       if (width > 0 && height > 0) return { width, height }
       break
     }
@@ -149,7 +149,6 @@ export const convertHeicToJpeg = async (heicBuffer: Buffer) => {
       const quality = fileSizeMB > 10 ? 0.8 : 0.95
 
       const jpegBuffer = await heicConvert({
-        // @ts-expect-error idk why there is a type error here
         buffer: heicBuffer,
         format: 'JPEG',
         quality,
@@ -158,7 +157,7 @@ export const convertHeicToJpeg = async (heicBuffer: Buffer) => {
       logger.image.info(
         `Successfully converted HEIC to JPEG (quality: ${quality})`,
       )
-      return Buffer.from(jpegBuffer as ArrayBuffer)
+      return Buffer.from(jpegBuffer)
     },
     {
       ...RetryPresets.slow, // HEIC 转换是重量级操作

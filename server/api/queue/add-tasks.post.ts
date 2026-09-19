@@ -57,9 +57,7 @@ export default defineEventHandler(async (event) => {
     const results = []
     const errors = []
 
-    for (let i = 0; i < tasks.length; i++) {
-      const task = tasks[i]
-
+    for (const [i, task] of tasks.entries()) {
       try {
         const taskId = await workerPool.addTask(task.payload, {
           priority: task.priority ?? defaultPriority,

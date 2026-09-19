@@ -120,7 +120,7 @@ export const ANALYTICS_SETTINGS_UI: Record<string, FieldUIConfig> = {
     type: 'textarea',
     rows: 12,
     placeholder:
-      '<!-- Google Analytics -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXX"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag(\'js\', new Date());\n  gtag(\'config\', \'G-XXXX\');\n</script>',
+      "<!-- Google Analytics -->\n<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-XXXX\"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag('js', new Date());\n  gtag('config', 'G-XXXX');\n</script>",
     help: 'settings.analytics.headScripts.help',
   },
   bodyScripts: {
@@ -168,186 +168,8 @@ export const SYSTEM_SETTINGS_UI: Record<string, FieldUIConfig> = {
     type: 'toggle',
     help: 'settings.system.webglImageViewerDebug.help',
   },
-  'auth.github.enabled': {
-    type: 'toggle',
-  },
-  'auth.github.clientId': {
-    type: 'input',
-    placeholder: 'Ov23li...',
-    visibleIf: { fieldKey: 'auth.github.enabled', value: true },
-  },
-  'auth.github.clientSecret': {
-    type: 'password',
-    placeholder: 'github_oauth_client_secret',
-    visibleIf: { fieldKey: 'auth.github.enabled', value: true },
-  },
 }
 
-export const STORAGE_SETTINGS_UI: Record<string, FieldUIConfig> = {
-  provider: {
-    type: 'custom',
-    options: [
-      {
-        label: 'settings.storage.provider.options.local.label',
-        value: 'local',
-        icon: 'tabler:server',
-        description: 'settings.storage.provider.options.local.description',
-      },
-      {
-        label: 'settings.storage.provider.options.s3.label',
-        value: 's3',
-        icon: 'tabler:brand-aws',
-        description: 'settings.storage.provider.options.s3.description',
-      },
-      {
-        label: 'settings.storage.provider.options.openlist.label',
-        value: 'openlist',
-        icon: 'tabler:stack',
-        description: 'settings.storage.provider.options.openlist.description',
-      },
-    ],
-  },
-  name: {
-    type: 'input',
-    required: true,
-  },
-  // Local
-  'local.basePath': {
-    type: 'input',
-    required: true,
-    help: 'settings.storage.local.basePath.description',
-    visibleIf: { fieldKey: 'provider', value: 'local' },
-  },
-  'local.baseUrl': {
-    type: 'input',
-    help: 'settings.storage.local.baseUrl.description',
-    visibleIf: { fieldKey: 'provider', value: 'local' },
-  },
-  'local.prefix': {
-    type: 'input',
-    placeholder: 'photos/',
-    help: 'settings.storage.local.prefix.description',
-    visibleIf: { fieldKey: 'provider', value: 'local' },
-  },
-  // S3
-  's3.endpoint': {
-    type: 'input',
-    required: true,
-    placeholder: 'https://s3.amazonaws.com',
-    help: 'settings.storage.s3.endpoint.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.bucket': {
-    type: 'input',
-    required: true,
-    help: 'settings.storage.s3.bucket.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.region': {
-    type: 'input',
-    required: true,
-    help: 'settings.storage.s3.region.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.accessKeyId': {
-    type: 'input',
-    required: true,
-    help: 'settings.storage.s3.accessKeyId.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.secretAccessKey': {
-    type: 'password',
-    required: true,
-    help: 'settings.storage.s3.secretAccessKey.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.prefix': {
-    type: 'input',
-    placeholder: '/photos',
-    help: 'settings.storage.s3.prefix.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.cdnUrl': {
-    type: 'input',
-    help: 'settings.storage.s3.cdnUrl.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.forcePathStyle': {
-    type: 'toggle',
-    help: 'settings.storage.s3.forcePathStyle.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  's3.maxKeys': {
-    type: 'number',
-    help: 'settings.storage.s3.maxKeys.description',
-    visibleIf: { fieldKey: 'provider', value: 's3' },
-  },
-  // OpenList
-  'openlist.baseUrl': {
-    type: 'input',
-    required: true,
-    placeholder: 'https://alist.example.com',
-    help: 'settings.storage.openlist.baseUrl.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.rootPath': {
-    type: 'input',
-    required: true,
-    placeholder: '/photos',
-    help: 'settings.storage.openlist.rootPath.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.token': {
-    type: 'password',
-    required: true,
-    help: 'settings.storage.openlist.token.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.cdnUrl': {
-    type: 'input',
-    help: 'settings.storage.openlist.cdnUrl.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.uploadEndpoint': {
-    type: 'input',
-    placeholder: '/api/fs/put',
-    help: 'settings.storage.openlist.uploadEndpoint.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.downloadEndpoint': {
-    type: 'input',
-    help: 'settings.storage.openlist.downloadEndpoint.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.listEndpoint': {
-    type: 'input',
-    help: 'settings.storage.openlist.listEndpoint.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.deleteEndpoint': {
-    type: 'input',
-    placeholder: '/api/fs/remove',
-    help: 'settings.storage.openlist.deleteEndpoint.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.metaEndpoint': {
-    type: 'input',
-    placeholder: '/api/fs/get',
-    help: 'settings.storage.openlist.metaEndpoint.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-  'openlist.pathField': {
-    type: 'input',
-    placeholder: 'path',
-    help: 'settings.storage.openlist.pathField.description',
-    visibleIf: { fieldKey: 'provider', value: 'openlist' },
-  },
-}
-
-/**
- * Get UI configuration for a specific setting
- * Used to return complete field descriptions in the fields.get.ts API
- */
 export function getSettingUIConfig(
   namespace: string,
   key: string,
@@ -358,7 +180,6 @@ export function getSettingUIConfig(
     privacy: PRIVACY_SETTINGS_UI,
     map: MAP_SETTINGS_UI,
     location: LOCATION_SETTINGS_UI,
-    storage: STORAGE_SETTINGS_UI,
     analytics: ANALYTICS_SETTINGS_UI,
   }
 

@@ -1,4 +1,4 @@
-import { getStorageManager } from '~~/server/plugins/3.storage'
+import { getStorageManager } from '~~/server/services/storage'
 import { processLivePhotoVideo, isLivePhotoVideo } from '../video/livephoto'
 
 /**

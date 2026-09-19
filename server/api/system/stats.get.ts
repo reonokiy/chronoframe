@@ -32,9 +32,9 @@ async function getDockerMemoryInfo(): Promise<{
 
     for (const line of lines) {
       if (line.startsWith('MemTotal:')) {
-        totalMem = parseInt(line.split(/\s+/)[1]) * 1024 // 转换为字节
+        totalMem = parseInt(line.split(/\s+/)[1] || '0') * 1024 // 转换为字节
       } else if (line.startsWith('MemAvailable:')) {
-        availableMem = parseInt(line.split(/\s+/)[1]) * 1024 // 转换为字节
+        availableMem = parseInt(line.split(/\s+/)[1] || '0') * 1024 // 转换为字节
       }
     }
 
@@ -121,21 +121,23 @@ export default eventHandler(async (event) => {
   await requireUserSession(event)
 
   // 获取基础统计
-  const totalPhotos = await useDB()
-    .select({ count: sql<number>`count(*)` })
-    .from(tables.photos)
-    .get()
+  const totalPhotos = (
+    await useDB()
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(tables.photos)
+  )[0]
 
   // 获取今日新增照片数量
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayISO = today.toISOString()
 
-  const todayPhotos = await useDB()
-    .select({ count: sql<number>`count(*)` })
-    .from(tables.photos)
-    .where(gte(tables.photos.dateTaken, todayISO))
-    .get()
+  const todayPhotos = (
+    await useDB()
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(tables.photos)
+      .where(gte(tables.photos.dateTaken, todayISO))
+  )[0]
 
   // 获取本周新增照片数量
   const weekAgo = new Date()
@@ -143,11 +145,12 @@ export default eventHandler(async (event) => {
   weekAgo.setHours(0, 0, 0, 0)
   const weekAgoISO = weekAgo.toISOString()
 
-  const weekPhotos = await useDB()
-    .select({ count: sql<number>`count(*)` })
-    .from(tables.photos)
-    .where(gte(tables.photos.dateTaken, weekAgoISO))
-    .get()
+  const weekPhotos = (
+    await useDB()
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(tables.photos)
+      .where(gte(tables.photos.dateTaken, weekAgoISO))
+  )[0]
 
   // 获取本月新增照片数量
   const monthStart = new Date()
@@ -155,21 +158,23 @@ export default eventHandler(async (event) => {
   monthStart.setHours(0, 0, 0, 0)
   const monthStartISO = monthStart.toISOString()
 
-  const monthPhotos = await useDB()
-    .select({ count: sql<number>`count(*)` })
-    .from(tables.photos)
-    .where(gte(tables.photos.dateTaken, monthStartISO))
-    .get()
+  const monthPhotos = (
+    await useDB()
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(tables.photos)
+      .where(gte(tables.photos.dateTaken, monthStartISO))
+  )[0]
 
   // 获取存储统计（估算）
-  const storageStats = await useDB()
-    .select({
-      totalSize: sql<number>`COALESCE(sum(file_size), 0)`,
-      avgSize: sql<number>`COALESCE(avg(file_size), 0)`,
-      maxSize: sql<number>`COALESCE(max(file_size), 0)`,
-    })
-    .from(tables.photos)
-    .get()
+  const storageStats = (
+    await useDB()
+      .select({
+        totalSize: sql<number>`COALESCE(sum(file_size), 0)`.mapWith(Number),
+        avgSize: sql<number>`COALESCE(avg(file_size), 0)`.mapWith(Number),
+        maxSize: sql<number>`COALESCE(max(file_size), 0)`.mapWith(Number),
+      })
+      .from(tables.photos)
+  )[0]
 
   // 获取最近7天的上传趋势
   today.setHours(0, 0, 0, 0)
@@ -182,13 +187,12 @@ export default eventHandler(async (event) => {
   const rawTrendData = await useDB()
     .select({
       date: sql<string>`DATE(${tables.photos.dateTaken})`,
-      count: sql<number>`count(*)`,
+      count: sql<number>`count(*)`.mapWith(Number),
     })
     .from(tables.photos)
     .where(gte(tables.photos.dateTaken, sevenDaysAgoISO))
     .groupBy(sql`DATE(${tables.photos.dateTaken})`)
     .orderBy(sql`DATE(${tables.photos.dateTaken}) ASC`)
-    .all()
 
   // Build trendData for each of the last 7 days, filling in zeros if needed
   const trendData = []

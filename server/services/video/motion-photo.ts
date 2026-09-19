@@ -284,7 +284,7 @@ export const processMotionPhotoFromXmp = async ({
     }
 
     const livePhotoVideoKey = storedObject.key || targetKey
-    const livePhotoVideoUrl = storageProvider.getPublicUrl(livePhotoVideoKey)
+    const livePhotoVideoUrl = storageProvider.getMediaUrl(livePhotoVideoKey)
 
     logger?.success(
       `[motion-photo] Extracted Motion Photo video for ${storageKey} at offset ${resolvedOffset}, saved as ${livePhotoVideoKey}`,

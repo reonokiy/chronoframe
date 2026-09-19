@@ -1,13 +1,16 @@
 import { sql } from 'drizzle-orm'
 import {
-  sqliteTable,
+  pgTable,
   text,
   integer,
-  real,
+  serial,
+  timestamp,
+  boolean,
+  jsonb,
+  doublePrecision,
   uniqueIndex,
-} from 'drizzle-orm/sqlite-core'
+} from 'drizzle-orm/pg-core'
 import type { NeededExif } from '~~/shared/types/photo'
-import type { StorageConfig } from '../services/storage'
 
 type PipelineQueuePayload =
   | {
@@ -30,23 +33,28 @@ type PipelineQueuePayload =
       photoId: string
     }
 
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  username: text('name').notNull().unique(),
-  email: text('email').notNull().unique(),
-  password: text('password'),
-  avatar: text('avatar'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-  isAdmin: integer('is_admin').default(0).notNull(),
-})
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    username: text('name').notNull(),
+    email: text('email'),
+    oidcIssuer: text('oidc_issuer').notNull(),
+    oidcSubject: text('oidc_subject').notNull(),
+    avatar: text('avatar'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    isAdmin: integer('is_admin').default(1).notNull(),
+  },
+  (t) => [uniqueIndex('users_oidc_identity').on(t.oidcIssuer, t.oidcSubject)],
+)
 
-export const photos = sqliteTable('photos', {
+export const photos = pgTable('photos', {
   id: text('id').primaryKey().unique(),
   title: text('title'),
   description: text('description'),
   width: integer('width'),
   height: integer('height'),
-  aspectRatio: real('aspect_ratio'),
+  aspectRatio: doublePrecision('aspect_ratio'),
   dateTaken: text('date_taken'),
   storageKey: text('storage_key'),
   thumbnailKey: text('thumbnail_key'),
@@ -55,11 +63,11 @@ export const photos = sqliteTable('photos', {
   originalUrl: text('original_url'),
   thumbnailUrl: text('thumbnail_url'),
   thumbnailHash: text('thumbnail_hash'),
-  tags: text('tags', { mode: 'json' }).$type<string[]>(),
-  exif: text('exif', { mode: 'json' }).$type<NeededExif>(),
+  tags: jsonb('tags').$type<string[]>(),
+  exif: jsonb('exif').$type<NeededExif>(),
   // 地理位置信息
-  latitude: real('latitude'),
-  longitude: real('longitude'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   country: text('country'),
   city: text('city'),
   locationName: text('location_name'),
@@ -69,9 +77,9 @@ export const photos = sqliteTable('photos', {
   livePhotoVideoKey: text('live_photo_video_key'),
 })
 
-export const pipelineQueue = sqliteTable('pipeline_queue', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  payload: text('payload', { mode: 'json' })
+export const pipelineQueue = pgTable('pipeline_queue', {
+  id: serial('id').primaryKey(),
+  payload: jsonb('payload')
     .$type<PipelineQueuePayload>()
     .notNull()
     .default({
@@ -104,15 +112,15 @@ export const pipelineQueue = sqliteTable('pipeline_queue', {
     ],
   }),
   errorMessage: text('error_message'),
-  createdAt: integer('created_at', { mode: 'timestamp' })
+  createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
-  completedAt: integer('completed_at', { mode: 'timestamp' }),
+    .default(sql`now()`),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
 })
 
 // 照片表态表
-export const photoReactions = sqliteTable('photo_reactions', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const photoReactions = pgTable('photo_reactions', {
+  id: serial('id').primaryKey(),
   photoId: text('photo_id')
     .notNull()
     .references(() => photos.id, { onDelete: 'cascade' }),
@@ -123,52 +131,52 @@ export const photoReactions = sqliteTable('photo_reactions', {
   fingerprint: text('fingerprint').notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
-  createdAt: integer('created_at', { mode: 'timestamp' })
+  createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .default(sql`now()`),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`now()`),
 })
 
 // 相簿表
-export const albums = sqliteTable('albums', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const albums = pgTable('albums', {
+  id: serial('id').primaryKey(),
   title: text('title').notNull(),
   description: text('description'),
   coverPhotoId: text('cover_photo_id').references(() => photos.id, {
     onDelete: 'set null',
   }),
-  isHidden: integer('is_hidden', { mode: 'boolean' }).default(false).notNull(),
+  isHidden: boolean('is_hidden').default(false).notNull(),
   // Album sort position (ascending; smaller value appears first)
-  position: real('position').notNull().default(0),
-  createdAt: integer('created_at', { mode: 'timestamp' })
+  position: doublePrecision('position').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .default(sql`now()`),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`now()`),
 })
 
 // 相簿-照片 多对多关系表
-export const albumPhotos = sqliteTable('album_photos', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const albumPhotos = pgTable('album_photos', {
+  id: serial('id').primaryKey(),
   albumId: integer('album_id')
     .notNull()
     .references(() => albums.id, { onDelete: 'cascade' }),
   photoId: text('photo_id')
     .notNull()
     .references(() => photos.id, { onDelete: 'cascade' }),
-  position: real('position').notNull().default(1000000),
-  addedAt: integer('added_at', { mode: 'timestamp' })
+  position: doublePrecision('position').notNull().default(1000000),
+  addedAt: timestamp('added_at', { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`now()`),
 })
 
-export const settings = sqliteTable(
+export const settings = pgTable(
   'settings',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
+    id: serial('id').primaryKey(),
     namespace: text('namespace').notNull().default('common'),
     key: text('key').notNull(),
     type: text('type', {
@@ -178,40 +186,16 @@ export const settings = sqliteTable(
     defaultValue: text('default_value'),
     label: text('label'),
     description: text('description'),
-    isPublic: integer('is_public', { mode: 'boolean' })
-      .default(false)
-      .notNull(),
-    isReadonly: integer('is_readonly', { mode: 'boolean' })
-      .default(false)
-      .notNull(),
-    isSecret: integer('is_secret', { mode: 'boolean' })
-      .default(false)
-      .notNull(),
-    enum: text('enum', { mode: 'json' }).$type<string[] | null>(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
+    isPublic: boolean('is_public').default(false).notNull(),
+    isReadonly: boolean('is_readonly').default(false).notNull(),
+    isSecret: boolean('is_secret').default(false).notNull(),
+    enum: jsonb('enum').$type<string[] | null>(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`now()`),
     updatedBy: integer('updated_by').references(() => users.id, {
       onDelete: 'set null',
     }),
   },
   (t) => [uniqueIndex('idx_namespace_key').on(t.namespace, t.key)],
-)
-
-export const settings_storage_providers = sqliteTable(
-  'settings_storage_providers',
-  {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    name: text('name').notNull(),
-    provider: text('provider', {
-      enum: ['s3', 'local', 'openlist'],
-    }).notNull(),
-    config: text('config', { mode: 'json' }).$type<StorageConfig>().notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-      .notNull()
-      .default(sql`(unixepoch())`),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-      .notNull()
-      .default(sql`(unixepoch())`),
-  },
 )
