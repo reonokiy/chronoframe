@@ -175,7 +175,7 @@ docker compose up -d
 
 ### Requirements
 
-- Node.js 18+
+- Node.js 24.21+ (24.x)
 - pnpm 9.0+
 
 ### Install dependencies

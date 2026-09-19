@@ -173,7 +173,7 @@ docker compose up -d
 
 ### 环境要求
 
-- Node.js 18+
+- Node.js 24.21+ (24.x)
 - pnpm 9.0+
 
 ### 安装依赖

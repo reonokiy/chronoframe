@@ -34,6 +34,8 @@ Production refuses the local provider; OpenList and CDN/public bucket URL settin
 
 ## Development
 
+Use Node.js 24.21.0 (pinned in `.node-version`, CI and the Docker image) and pnpm 10.34.1. The supported runtime is Node.js 24.x.
+
 ```sh
 docker compose -f compose.dev.yml up -d
 cp .env.example .env
